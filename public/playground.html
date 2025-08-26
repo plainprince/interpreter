@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Interpreter Playground</title>
+        <link rel="stylesheet" href="styles.css" />
+        <style>
+            /* CodeMirror 6 VS Code-like autocomplete styling */
+            .cm-tooltip-autocomplete {
+                background: #1e1e1e;
+                border: 1px solid #3c3c3c;
+                border-radius: 4px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+                font-family: "Consolas", "Monaco", "Courier New", monospace;
+                font-size: 13px;
+                max-height: 300px;
+                overflow-y: auto;
+                padding: 4px 0;
+            }
+
+            .cm-tooltip-autocomplete ul {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+            }
+
+            .cm-tooltip-autocomplete li {
+                padding: 6px 12px;
+                margin: 0;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                color: #cccccc;
+                border: none;
+            }
+
+            .cm-tooltip-autocomplete li:hover,
+            .cm-tooltip-autocomplete li[aria-selected="true"] {
+                background: #094771;
+                color: #ffffff;
+            }
+
+            .cm-tooltip-autocomplete .cm-completionLabel {
+                flex-grow: 1;
+                font-weight: 500;
+            }
+
+            .cm-tooltip-autocomplete .cm-completionDetail {
+                color: #9cdcfe;
+                font-style: italic;
+                margin-left: 8px;
+                font-size: 11px;
+            }
+
+            .cm-tooltip-autocomplete .cm-completionInfo {
+                background: #252526;
+                border: 1px solid #3c3c3c;
+                border-radius: 4px;
+                color: #cccccc;
+                font-size: 12px;
+                max-width: 300px;
+                padding: 8px;
+            }
+
+            /* Icon styling for different completion types */
+            .cm-tooltip-autocomplete li::before {
+                content: "";
+                width: 16px;
+                height: 16px;
+                margin-right: 8px;
+                border-radius: 2px;
+                display: inline-block;
+                text-align: center;
+                line-height: 16px;
+                font-size: 10px;
+                font-weight: bold;
+                color: white;
+            }
+
+            .cm-tooltip-autocomplete li[data-type="keyword"]::before {
+                content: "K";
+                background: #569cd6;
+            }
+
+            .cm-tooltip-autocomplete li[data-type="function"]::before {
+                content: "F";
+                background: #dcdcaa;
+                color: #1e1e1e;
+            }
+
+            .cm-tooltip-autocomplete li[data-type="variable"]::before {
+                content: "V";
+                background: #9cdcfe;
+                color: #1e1e1e;
+            }
+
+            .cm-tooltip-autocomplete li[data-type="property"]::before {
+                content: "P";
+                background: #4fc1ff;
+                color: #1e1e1e;
+            }
+
+            .cm-tooltip-autocomplete li[data-type="constant"]::before {
+                content: "C";
+                background: #b5cea8;
+                color: #1e1e1e;
+            }
+
+            .cm-tooltip-autocomplete li[data-type="text"]::before {
+                content: "T";
+                background: #ce9178;
+                color: #1e1e1e;
+            }
+
+            /* Editor styling */
+            .cm-editor {
+                height: 100%;
+                font-family: "Consolas", "Monaco", "Courier New", monospace;
+                font-size: 14px;
+            }
+
+            .cm-focused {
+                outline: none;
+            }
+
+            /* Dracula theme colors for syntax highlighting */
+            .cm-content {
+                color: #f8f8f2;
+                background-color: #282a36;
+            }
+
+            .cm-editor.cm-focused .cm-cursor {
+                border-left-color: #f8f8f0;
+            }
+
+            .cm-editor.cm-focused .cm-selectionBackground {
+                background-color: #44475a;
+            }
+
+            .cm-selectionBackground {
+                background-color: #44475a;
+            }
+
+            .cm-gutters {
+                background-color: #282a36;
+                color: #6272a4;
+                border: none;
+            }
+
+            .cm-activeLineGutter {
+                background-color: #44475a;
+            }
+
+            .cm-activeLine {
+                background-color: rgba(68, 71, 90, 0.5);
+            }
+
+            /* Syntax highlighting */
+            .cmt-keyword {
+                color: #ff79c6;
+                font-weight: bold;
+            }
+
+            .cmt-string {
+                color: #f1fa8c;
+            }
+
+            .cmt-comment {
+                color: #6272a4;
+                font-style: italic;
+            }
+
+            .cmt-number {
+                color: #bd93f9;
+            }
+
+            .cmt-boolean {
+                color: #bd93f9;
+            }
+
+            .cmt-function {
+                color: #50fa7b;
+                font-style: italic;
+            }
+
+            .cmt-variable {
+                color: #f8f8f2;
+            }
+
+            .cmt-operator {
+                color: #ff79c6;
+            }
+
+            .cmt-bracket {
+                color: #f8f8f2;
+            }
+
+            /*
+        Dracula Theme for highlight.js
+        */
+            .hljs {
+                display: block;
+                overflow-x: auto;
+                padding: 0.5em;
+                background: #282a36;
+                color: #f8f8f2;
+            }
+            .hljs-built_in,
+            .hljs-selector-tag,
+            .hljs-section,
+            .hljs-link {
+                color: #8be9fd;
+            }
+            .hljs-keyword {
+                color: #ff79c6;
+            }
+            .hljs,
+            .hljs-subst {
+                color: #f8f8f2;
+            }
+            .hljs-title,
+            .hljs-attr,
+            .hljs-meta-keyword {
+                font-style: italic;
+                color: #50fa7b;
+            }
+            .hljs-string,
+            .hljs-meta,
+            .hljs-name,
+            .hljs-type,
+            .hljs-symbol,
+            .hljs-bullet,
+            .hljs-addition,
+            .hljs-variable,
+            .hljs-template-tag,
+            .hljs-template-variable {
+                color: #f1fa8c;
+            }
+            .hljs-comment,
+            .hljs-quote,
+            .hljs-deletion {
+                color: #6272a4;
+            }
+            .hljs-keyword,
+            .hljs-selector-tag,
+            .hljs-literal,
+            .hljs-name,
+            .hljs-strong {
+                font-weight: 700;
+            }
+            .hljs-literal,
+            .hljs-number {
+                color: #bd93f9;
+            }
+            .hljs-emphasis {
+                font-style: italic;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="editor"></div>
+        <div class="button-container">
+            <button id="run">Run</button>
+            <button id="docs">Documentation</button>
+            <button id="settings">Settings</button>
+            <button id="auth-btn">Login</button>
+        </div>
+
+        <div id="auth-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-button">&times;</span>
+                <div id="auth-content">
+                    <div id="login-view">
+                        <h2>Login</h2>
+                        <form id="login-form">
+                            <input type="text" id="login-username" placeholder="Username" required />
+                            <input type="password" id="login-password" placeholder="Password" required />
+                            <button type="submit">Login</button>
+                        </form>
+                        <p>Don't have an account? <a href="#" id="show-register">Register here</a>.</p>
+                    </div>
+                    <div id="register-view" style="display: none;">
+                        <h2>Register</h2>
+                        <form id="register-form">
+                            <input type="text" id="register-username" placeholder="Username" required />
+                            <input type="password" id="register-password" placeholder="Password" required />
+                            <button type="submit">Register</button>
+                        </form>
+                        <p>Already have an account? <a href="#" id="show-login">Login here</a>.</p>
+                    </div>
+                    <p id="auth-error" style="color: red;"></p>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="output-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-button">&times;</span>
+                <div id="output"></div>
+            </div>
+        </div>
+
+        <div id="docs-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-button">&times;</span>
+                <div id="docs-content">
+                    <h2>Language Documentation</h2>
+
+                    <div class="docs-section">
+                        <h3>Examples</h3>
+                        <p>
+                            Click a button to load an example into the editor.
+                            <strong>Warning:</strong> This will replace your
+                            current code.
+                        </p>
+                        <div id="examples-container">
+                            <button class="example-btn" data-example="flappy">
+                                Flappy Bird
+                            </button>
+                            <button class="example-btn" data-example="snake">
+                                Snake
+                            </button>
+                            <button class="example-btn" data-example="artillery">
+                                Artillery Game
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="docs-section">
+                        <h3>Core Concepts</h3>
+                        <p>
+                            This is a simple, scripting language designed for
+                            creative coding, small games, and educational
+                            purposes. It uses a straightforward syntax, dynamic
+                            typing, and provides built-in functions for graphics
+                            and interaction.
+                        </p>
+                    </div>
+
+                    <div class="docs-section">
+                        <h3>Comments</h3>
+                        <p>
+                            Comments start with <code>#</code> and extend to the
+                            end of the line. They are ignored by the
+                            interpreter.
+                        </p>
+                        <pre><code class="language-mylang"># This is a comment. It is not executed.
+x = 10; # You can also put comments at the end of a line.</code></pre>
+                    </div>
+
+                    <div class="docs-section">
+                        <h3>Variables and Data Types</h3>
+                        <p>
+                            Variables are dynamically typed, meaning you don't
+                            need to declare their type. You declare a variable
+                            simply by assigning a value to it. All variables are
+                            global.
+                        </p>
+                        <h4>Data Types</h4>
+                        <ul>
+                            <li>
+                                <strong>Number:</strong> <code>123</code>,
+                                <code>-45.6</code>
+                            </li>
+                            <li>
+                                <strong>String:</strong> <code>"Hello"</code>,
+                                <code>'World'</code>
+                            </li>
+                            <li>
+                                <strong>Boolean:</strong> <code>true</code>,
+                                <code>false</code>
+                            </li>
+                            <li>
+                                <strong>null:</strong> Represents the
+                                intentional absence of any object value.
+                            </li>
+                            <li>
+                                <strong>Array:</strong> An ordered list of
+                                values. <code>[1, "two", true]</code>
+                            </li>
+                            <li>
+                                <strong>Object:</strong> A collection of
+                                key-value pairs.
+                                <code>{ name: "John", age: 30 }</code>
+                            </li>
+                        </ul>
+                        <pre><code class="language-mylang"># Variable examples
+my_number = 42;
+my_string = "Hello, world!";
+is_active = true;
+my_array = [1, 2, 3];
+my_object = { x: 10, y: 20 };</code></pre>
+
+                        <h4>String Operations</h4>
+                        <p>
+                            Strings can be joined using the
+                            <code>+</code> operator. You can also embed
+                            expressions directly inside strings using
+                            <code>${...}</code> syntax.
+                        </p>
+                        <pre><code class="language-mylang">name = "Alice";
+greeting = "Hello, " + name + "!"; # "Hello, Alice!"
+
+# String Interpolation
+score = 100;
+message = "Your score is: ${score} points."; # "Your score is: 100 points."
+console.log("Player position: (${player.x}, ${player.y})");</code></pre>
+                    </div>
+
+                    <div class="docs-section">
+                        <h3>Operators</h3>
+                        <h4>Arithmetic</h4>
+                        <p>Standard arithmetic operators are supported.</p>
+                        <pre><code class="language-mylang">sum = 5 + 3;      # 8
+difference = 5 - 3; # 2
+product = 5 * 3;  # 15
+quotient = 5 / 3; # 1.666...
+remainder = 5 % 3;  # 2</code></pre>
+
+                        <h4>Comparison</h4>
+                        <p>Used in conditional statements.</p>
+                        <pre><code class="language-mylang">5 == 5; # true
+5 != 3; # true
+5 < 3;  # false
+5 > 3;  # true
+5 <= 5; # true
+5 >= 3; # true</code></pre>
+
+                        <h4>Logical</h4>
+                        <p>
+                            Combine boolean expressions. Use <code>and</code>,
+                            <code>or</code>, and <code>not</code>.
+                        </p>
+                        <pre><code class="language-mylang">is_ready = true;
+has_permission = false;
+
+if (is_ready and has_permission); # false
+    # ...
+end;
+
+if (is_ready or has_permission); # true
+    # ...
+end;
+
+if (not has_permission); # true
+    # ...
+end;</code></pre>
+
+                        <h4>Update (Shorthand Assignment)</h4>
+                        <p>Modify a variable's value in place.</p>
+                        <pre><code class="language-mylang">x = 10;
+x += 5; # x is now 15 (equivalent to x = x + 5)
+x -= 3; # x is now 12
+x *= 2; # x is now 24
+x /= 4; # x is now 6
+
+# Increment and Decrement
+y = 5;
+y++; # y is now 6
+y--; # y is now 5</code></pre>
+                    </div>
+
+                    <div class="docs-section">
+                        <h3>Control Flow</h3>
+                        <p>
+                            Control flow statements direct the order in which
+                            code is executed. All block statements
+                            (<code>if</code>, <code>while</code>,
+                            <code>for</code>, <code>function</code>) are
+                            terminated with <code>end;</code>.
+                        </p>
+
+                        <h4><code>if/elseif/else</code></h4>
+                        <p>
+                            Execute code based on one or more conditions.
+                            Parentheses <code>()</code> around the condition are
+                            required.
+                        </p>
+                        <pre><code class="language-mylang">x = 10;
+if (x > 5);
+    console.log("x is greater than 5");
+elseif (x == 5);
+    console.log("x is equal to 5");
+else;
+    console.log("x is less than 5");
+end;</code></pre>
+
+                        <h4><code>while</code> Loops</h4>
+                        <p>
+                            Loops as long as a condition is true. Parentheses
+                            <code>()</code> around the condition are required.
+                            <br /><strong>Important:</strong> For animations or
+                            game loops, you <em>must</em> include a
+                            <code>wait(ms)</code> call inside your loop to
+                            prevent the program from becoming unresponsive.
+                        </p>
+                        <pre><code class="language-mylang">i = 0;
+while (i < 3);
+    console.log("i =", i);
+    i++; # Shortcut for i = i + 1
+end;
+
+# Game Loop Example
+while (true); # Loop forever
+    # update game state...
+    # draw graphics...
+    wait(16); # Crucial! Pauses for ~16ms for ~60 FPS
+end;</code></pre>
+
+                        <h4><code>for</code> Loops</h4>
+                        <p>
+                            A simple loop that iterates a fixed number of times.
+                            The first argument is the name of the iterator
+                            variable (which is created automatically), and the
+                            second is the number of iterations (exclusive).
+                        </p>
+                        <pre><code class="language-mylang"># Prints 0, 1, 2, 3, 4
+for (i, 5);
+    console.log("i =", i);
+end;</code></pre>
+
+                        <h4><code>break</code> and <code>continue</code></h4>
+                        <p>
+                            <code>break;</code> immediately exits the current
+                            loop. <code>continue;</code> skips the rest of the
+                            current iteration and proceeds to the next one.
+                        </p>
+                        <pre><code class="language-mylang">for (k, 10);
+    if (k == 2);
+        continue; # Skips printing 2
+    end;
+    if (k == 8);
+        break; # Stops the loop when k is 8
+    end;
+    console.log("k =", k); # Prints 0, 1, 3, 4, 5, 6, 7
+end;</code></pre>
+                    </div>
+
+                    <div class="docs-section">
+                        <h3>Functions</h3>
+                        <h4>User-defined Functions</h4>
+                        <p>
+                            Define reusable blocks of code with
+                            <code>function</code>. All variables are global, but
+                            function parameters temporarily shadow global
+                            variables with the same name.
+                        </p>
+                        <pre><code class="language-mylang">function greet(name);
+    console.log("Hello,", name);
+end;
+
+greet("Alice"); # Calls the function
+greet("Bob");</code></pre>
+
+                        <h4><code>return</code></h4>
+                        <p>
+                            Use <code>return</code> to send a value back from a
+                            function.
+                        </p>
+                        <pre><code class="language-mylang">function add(a, b);
+    return a + b;
+end;
+
+result = add(5, 3); # result is now 8
+console.log("5 + 3 =", result);</code></pre>
+                    </div>
+
+                    <div class="docs-section">
+                        <h3>Data Structures</h3>
+                        <h4>Arrays</h4>
+                        <p>
+                            Arrays are ordered lists of values, indexed starting
+                            from 0. You can access native array methods like
+                            <code>.push()</code> and properties like
+                            <code>.length</code>.
+                        </p>
+                        <pre><code class="language-mylang">items = ["apple", "banana", "cherry"];
+console.log(items[0]); # Prints "apple"
+
+items.push("date"); # Adds "date" to the end
+console.log(items.length); # Prints 4</code></pre>
+
+                        <h4>Objects</h4>
+                        <p>
+                            Objects are unordered collections of key-value pairs
+                            (also known as dictionaries or maps). You can access
+                            properties using dot notation (<code>.</code>).
+                        </p>
+                        <pre><code class="language-mylang">player = { x: 10, y: 20, health: 100 };
+console.log(player.x); # Prints 10
+
+player.health -= 10; # Modify a property
+player.score = 0;   # Add a new property
+console.log(player.score); # Prints 0</code></pre>
+                    </div>
+
+                    <div class="docs-section">
+                        <h3>Built-in Globals & Functions</h3>
+                        <h4><code>console</code></h4>
+                        <p>
+                            A global object for printing text to the output
+                            console.
+                        </p>
+                        <ul>
+                            <li>
+                                <code>console.log(arg1, arg2, ...)</code>:
+                                Prints standard output. Can take multiple
+                                arguments.
+                            </li>
+                            <li>
+                                <code>console.warn(arg1, ...)</code>: Prints a
+                                warning message (typically in yellow).
+                            </li>
+                            <li>
+                                <code>console.error(arg1, ...)</code>: Prints an
+                                error message (typically in red).
+                            </li>
+                            <li>
+                                <code>console.clear()</code>: Clears all
+                                previous output from the console.
+                            </li>
+                        </ul>
+                        <pre><code class="language-mylang">name = "World";
+console.log("Hello,", name);
+console.warn("Low health!");
+console.error("Critical error!");
+wait(2000);
+console.clear();</code></pre>
+
+                        <h4><code>math</code></h4>
+                        <p>
+                            A global object with mathematical functions and
+                            constants.
+                        </p>
+                        <ul>
+                            <li>
+                                <code>math.random()</code>: Returns a random
+                                number between 0 (inclusive) and 1 (exclusive).
+                            </li>
+                            <li>
+                                <code>math.round(n)</code>: Rounds to the
+                                nearest integer.
+                            </li>
+                            <li><code>math.floor(n)</code>: Rounds down.</li>
+                            <li><code>math.ceil(n)</code>: Rounds up.</li>
+                            <li>
+                                <code>math.abs(n)</code>: Returns the absolute
+                                value.
+                            </li>
+                            <li>
+                                <code>math.sqrt(n)</code>: Returns the square
+                                root.
+                            </li>
+                            <li>
+                                <code>math.min(a, b, ...)</code>: Returns the
+                                smallest of the given numbers.
+                            </li>
+                            <li>
+                                <code>math.max(a, b, ...)</code>: Returns the
+                                largest of the given numbers.
+                            </li>
+                            <li>
+                                <code>math.pi</code>: The constant π
+                                (3.14159...).
+                            </li>
+                        </ul>
+                        <pre><code class="language-mylang"># Roll a 6-sided die
+roll = math.floor(math.random() * 6) + 1;
+console.log("You rolled a", roll);</code></pre>
+
+                        <h4>Graphics Functions</h4>
+                        <p>
+                            Global functions for drawing on the output canvas.
+                            The coordinate system starts with (0,0) at the
+                            top-left corner.
+                        </p>
+                        <ul>
+                            <li>
+                                <code>pixel(x, y, r, g, b)</code>: Draws a
+                                single pixel at (x, y) with the given RGB color
+                                (0-255).
+                            </li>
+                            <li>
+                                <code>rect(x, y, width, height, r, g, b)</code>:
+                                Draws a filled rectangle.
+                            </li>
+                            <li>
+                                <code>clear()</code>: Clears the entire canvas
+                                to the background color defined in Settings.
+                            </li>
+                        </ul>
+                        <pre><code class="language-mylang"># Draw a red pixel and a blue rectangle
+pixel(50, 20, 255, 0, 0);
+rect(10, 10, 20, 30, 0, 0, 255);</code></pre>
+
+                        <h4>Timing and Control</h4>
+                        <ul>
+                            <li>
+                                <code>wait(milliseconds)</code>: Pauses program
+                                execution for a specified duration.
+                                <strong
+                                    >Essential for animations and game
+                                    loops.</strong
+                                >
+                            </li>
+                            <li>
+                                <code>time()</code>: Returns the number of
+                                milliseconds since the program started. Useful
+                                for creating timers.
+                            </li>
+                            <li>
+                                <code>exit()</code>: Immediately stops the
+                                entire program.
+                            </li>
+                        </ul>
+                        <pre><code class="language-mylang">start_time = time();
+console.log("Waiting for 1 second...");
+wait(1000);
+end_time = time();
+console.log("Elapsed time:", (end_time - start_time), "ms");
+exit();
+console.log("This will not be printed.");</code></pre>
+                    </div>
+
+                    <div class="docs-section">
+                        <h3>Event Handling</h3>
+                        <p>
+                            You can make your programs interactive by defining
+                            special event handler functions. These functions
+                            will be called automatically by the runtime when the
+                            user interacts with the program.
+                        </p>
+                        <ul>
+                            <li>
+                                <code>onKeyDown(event)</code>: Called when a key
+                                is pressed down.
+                            </li>
+                            <li>
+                                <code>onKeyUp(event)</code>: Called when a key
+                                is released.
+                            </li>
+                        </ul>
+                        <p>
+                            The <code>event</code> object passed to these
+                            functions contains information about the event, such
+                            as <code>event.key</code> (e.g., "a", " ", "Enter").
+                        </p>
+                        <pre><code class="language-mylang">function onKeyDown(event);
+    console.log("Key pressed:", event.key);
+    if (event.key == " ");
+        # Player jumps
+    end;
+end;
+
+function onKeyUp(event);
+    console.log("Key released:", event.key);
+end;</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="settings-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-button">&times;</span>
+                <div id="settings-content">
+                    <h2>Settings</h2>
+                    <div class="settings-section">
+                        <h3>Canvas Resolution</h3>
+                        <label for="canvas-width">Width:</label>
+                        <input
+                            type="number"
+                            id="canvas-width"
+                            min="1"
+                            max="256"
+                            value="128"
+                        />
+                        <label for="canvas-height">Height:</label>
+                        <input
+                            type="number"
+                            id="canvas-height"
+                            min="1"
+                            max="256"
+                            value="64"
+                        />
+                    </div>
+                    <div class="settings-section">
+                        <h3>Background Color</h3>
+                        <label for="bg-r">Red:</label>
+                        <input
+                            type="number"
+                            id="bg-r"
+                            min="0"
+                            max="255"
+                            value="0"
+                        />
+                        <label for="bg-g">Green:</label>
+                        <input
+                            type="number"
+                            id="bg-g"
+                            min="0"
+                            max="255"
+                            value="0"
+                        />
+                        <label for="bg-b">Blue:</label>
+                        <input
+                            type="number"
+                            id="bg-b"
+                            min="0"
+                            max="255"
+                            value="0"
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+        <script type="module" src="playground.js"></script>
+    </body>
+</html>
