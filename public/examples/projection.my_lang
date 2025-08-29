@@ -1,0 +1,79 @@
+2# 3D Rotating Cube Projection
+# Demonstrates math.* functions for 3D graphics.
+
+# Cube definition
+# 8 vertices in 3D space
+points = [
+    {x: -1, y: -1, z: -1},
+    {x: 1, y: -1, z: -1},
+    {x: 1, y: 1, z: -1},
+    {x: -1, y: 1, z: -1},
+    {x: -1, y: -1, z: 1},
+    {x: 1, y: -1, z: 1},
+    {x: 1, y: 1, z: 1},
+    {x: -1, y: 1, z: 1}
+]
+
+# 12 edges connecting the vertices (indices into the points array)
+edges = [
+    [0, 1], [1, 2], [2, 3], [3, 0], # Back face
+    [4, 5], [5, 6], [6, 7], [7, 4], # Front face
+    [0, 4], [1, 5], [2, 6], [3, 7]  # Connecting edges
+]
+
+# Canvas and projection settings
+CANVAS_WIDTH = 128
+CANVAS_HEIGHT = 64
+SCALE = 25
+angle_x = 0
+angle_y = 0
+
+# --- Main Game Loop ---
+while (true);
+    angle_x += 0.01
+    angle_y += 0.02
+
+    # Array to hold the 2D projected points
+    projected_points = []
+
+    # Rotate and project each 3D point to 2D
+    for (i, points.length);
+        p = points[i]
+
+        # Rotation around Y-axis
+        rotated_x = p.x * math.cos(angle_y) - p.z * math.sin(angle_y)
+        rotated_z = p.x * math.sin(angle_y) + p.z * math.cos(angle_y)
+
+        # Rotation around X-axis
+        rotated_y = p.y * math.cos(angle_x) - rotated_z * math.sin(angle_x)
+        final_z = p.y * math.sin(angle_x) + rotated_z * math.cos(angle_x)
+
+        # Simple orthographic projection
+        # Perspective would involve dividing by z
+        projected_x = CANVAS_WIDTH / 2 + rotated_x * SCALE
+        projected_y = CANVAS_HEIGHT / 2 + rotated_y * SCALE
+        
+        projected_points.push({x: projected_x, y: projected_y})
+    end;
+
+    # --- Drawing ---
+    clear()
+
+    # Draw the edges of the cube
+    for (i, edges.length);
+        edge = edges[i]
+        p1 = projected_points[edge[0]]
+        p2 = projected_points[edge[1]]
+        
+        # Draw a smooth line between the projected points
+        line(p1.x, p1.y, p2.x, p2.y, { r: 255, g: 255, b: 255, thickness: 1 })
+    end;
+    
+    # Draw vertices
+    for (i, projected_points.length);
+        p = projected_points[i]
+        circle(p.x, p.y, 2, 0, 255, 0)
+    end;
+
+    wait(16)
+end;

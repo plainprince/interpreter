@@ -1,0 +1,284 @@
+# Simple Raytracer
+# A basic raytracer with pixel-by-pixel rendering
+# WASD to move camera, mouse drag to look around
+
+console.log("Simple Raytracer - WASD to move, mouse drag to look")
+
+# --- Camera Settings ---
+WIDTH = 64
+HEIGHT = 32
+cam_x = 0
+cam_y = 1
+cam_z = 5
+cam_yaw = 0
+cam_pitch = 0
+
+# Mouse controls
+mouse_down = false
+last_mouse_x = 0
+last_mouse_y = 0
+
+# Movement
+move_forward = 0
+move_right = 0
+dirty = true
+
+# --- Scene Objects ---
+# Simple sphere at origin
+sphere_x = 0
+sphere_y = 0
+sphere_z = 0
+sphere_radius = 1
+
+# Ground plane
+ground_y = -1
+
+# Light source
+light_x = 2
+light_y = 2
+light_z = 2
+
+# --- Math Functions ---
+function dot(ax, ay, az, bx, by, bz);
+    return ax*bx + ay*by + az*bz
+end;
+
+function length_vec(x, y, z);
+    return math.sqrt(x*x + y*y + z*z)
+end;
+
+function normalize(x, y, z);
+    len = length_vec(x, y, z)
+    if (len > 0);
+        return {x: x/len, y: y/len, z: z/len}
+    end;
+    return {x: 0, y: 0, z: 0}
+end;
+
+# --- Ray-Sphere Intersection ---
+function intersect_sphere(ray_x, ray_y, ray_z, dir_x, dir_y, dir_z);
+    # Vector from ray origin to sphere center
+    oc_x = ray_x - sphere_x
+    oc_y = ray_y - sphere_y
+    oc_z = ray_z - sphere_z
+    
+    # Quadratic equation coefficients
+    a = dot(dir_x, dir_y, dir_z, dir_x, dir_y, dir_z)
+    b = 2 * dot(oc_x, oc_y, oc_z, dir_x, dir_y, dir_z)
+    c = dot(oc_x, oc_y, oc_z, oc_x, oc_y, oc_z) - sphere_radius * sphere_radius
+    
+    discriminant = b*b - 4*a*c
+    if (discriminant < 0);
+        return -1  # No intersection
+    end;
+    
+    # Return the closer intersection
+    t = (-b - math.sqrt(discriminant)) / (2*a)
+    if (t > 0.001);
+        return t
+    end;
+    
+    return -1
+end;
+
+# --- Ray-Ground Intersection ---
+function intersect_ground(ray_x, ray_y, ray_z, dir_x, dir_y, dir_z);
+    if (math.abs(dir_y) < 0.001);
+        return -1  # Ray is parallel to ground
+    end;
+    
+    t = (ground_y - ray_y) / dir_y
+    if (t > 0.001);
+        return t
+    end;
+    
+    return -1
+end;
+
+# --- Shading ---
+function shade_sphere(hit_x, hit_y, hit_z);
+    # Normal at hit point
+    norm = normalize(hit_x - sphere_x, hit_y - sphere_y, hit_z - sphere_z)
+    
+    # Light direction
+    light_dir = normalize(light_x - hit_x, light_y - hit_y, light_z - hit_z)
+    
+    # Simple diffuse shading
+    diffuse = math.max(0, dot(norm.x, norm.y, norm.z, light_dir.x, light_dir.y, light_dir.z))
+    
+    # Red sphere
+    r = math.min(255, 50 + diffuse * 200)
+    g = math.min(255, 50 + diffuse * 100)
+    b = math.min(255, 50 + diffuse * 100)
+    
+    return {r: r, g: g, b: b}
+end;
+
+function shade_ground(hit_x, hit_y, hit_z);
+    # Checkerboard pattern
+    grid_size = 1
+    check_x = math.floor(hit_x / grid_size)
+    check_z = math.floor(hit_z / grid_size)
+    
+    if ((check_x + check_z) % 2 == 0);
+        base = 100  # Light square
+    else;
+        base = 50   # Dark square
+    end;
+    
+    # Light direction (ground normal is always up)
+    light_dir = normalize(light_x - hit_x, light_y - hit_y, light_z - hit_z)
+    diffuse = math.max(0, light_dir.y)  # ground normal is (0, 1, 0)
+    
+    shade = base + diffuse * 100
+    return {r: shade, g: shade, b: shade}
+end;
+
+# --- Raytracing ---
+function trace_ray(ray_x, ray_y, ray_z, dir_x, dir_y, dir_z);
+    # Find closest intersection
+    t_sphere = intersect_sphere(ray_x, ray_y, ray_z, dir_x, dir_y, dir_z)
+    t_ground = intersect_ground(ray_x, ray_y, ray_z, dir_x, dir_y, dir_z)
+    
+    closest_t = -1
+    hit_object = 0  # 0=none, 1=sphere, 2=ground
+    
+    if (t_sphere > 0);
+        closest_t = t_sphere
+        hit_object = 1
+    end;
+    
+    if (t_ground > 0 and (closest_t < 0 or t_ground < closest_t));
+        closest_t = t_ground
+        hit_object = 2
+    end;
+    
+    if (hit_object == 0);
+        # Sky gradient
+        sky_intensity = math.max(0, dir_y + 0.5)
+        sky = 100 + sky_intensity * 100
+        return {r: sky*0.5, g: sky*0.7, b: sky}
+    end;
+    
+    # Calculate hit point
+    hit_x = ray_x + dir_x * closest_t
+    hit_y = ray_y + dir_y * closest_t
+    hit_z = ray_z + dir_z * closest_t
+    
+    if (hit_object == 1);
+        return shade_sphere(hit_x, hit_y, hit_z)
+    else;
+        return shade_ground(hit_x, hit_y, hit_z)
+    end;
+end;
+
+# --- Input Handlers ---
+function onKeyDown(event);
+    if (event.key == "w"); move_forward = 1; dirty = true; end;
+    if (event.key == "s"); move_forward = -1; dirty = true; end;
+    if (event.key == "a"); move_right = -1; dirty = true; end;
+    if (event.key == "d"); move_right = 1; dirty = true; end;
+end;
+
+function onKeyUp(event);
+    if (event.key == "w" or event.key == "s"); move_forward = 0; end;
+    if (event.key == "a" or event.key == "d"); move_right = 0; end;
+end;
+
+function onMouseDown(event);
+    mouse_down = true
+    last_mouse_x = event.x
+    last_mouse_y = event.y
+end;
+
+function onMouseUp(event);
+    mouse_down = false
+end;
+
+function onMouseMove(event);
+    if (mouse_down);
+        dx = event.x - last_mouse_x
+        dy = event.y - last_mouse_y
+        
+        cam_yaw = cam_yaw - dx * 0.3
+        cam_pitch = cam_pitch - dy * 0.3
+        cam_pitch = math.max(-89, math.min(89, cam_pitch))
+        
+        last_mouse_x = event.x
+        last_mouse_y = event.y
+        dirty = true
+    end;
+end;
+
+# --- Main Loop ---
+sample = 0
+while (true);
+    # Update camera position
+    if (move_forward != 0 or move_right != 0);
+        # Calculate movement directions
+        yaw_rad = cam_yaw * math.pi / 180
+        forward_x = -math.sin(yaw_rad)
+        forward_z = -math.cos(yaw_rad)
+        right_x = math.cos(yaw_rad)
+        right_z = math.sin(yaw_rad)
+        
+        # Move camera
+        speed = 0.1
+        cam_x = cam_x + (forward_x * move_forward + right_x * move_right) * speed
+        cam_z = cam_z + (forward_z * move_forward + right_z * move_right) * speed
+        dirty = true
+    end;
+    
+    # Render if camera moved or first frame
+    if (dirty or sample == 0);
+        console.log("Rendering frame...")
+        
+        # Calculate camera direction
+        yaw_rad = cam_yaw * math.pi / 180
+        pitch_rad = cam_pitch * math.pi / 180
+        
+        # Camera forward vector
+        forward_x = -math.sin(yaw_rad) * math.cos(pitch_rad)
+        forward_y = math.sin(pitch_rad)
+        forward_z = -math.cos(yaw_rad) * math.cos(pitch_rad)
+        
+        # Camera right vector (assuming up is (0,1,0))
+        right_x = math.cos(yaw_rad)
+        right_y = 0
+        right_z = math.sin(yaw_rad)
+        
+        # Camera up vector
+        up_x = right_y * forward_z - right_z * forward_y
+        up_y = right_z * forward_x - right_x * forward_z
+        up_z = right_x * forward_y - right_y * forward_x
+        
+        # Render each pixel
+        for (y, HEIGHT);
+            for (x, WIDTH);
+                # Calculate ray direction for this pixel
+                u = (x - WIDTH/2) / WIDTH
+                v = (y - HEIGHT/2) / HEIGHT
+                
+                # Ray direction
+                dir_x = forward_x + right_x * u + up_x * v
+                dir_y = forward_y + right_y * u + up_y * v
+                dir_z = forward_z + right_z * u + up_z * v
+                
+                # Normalize ray direction
+                dir_norm = normalize(dir_x, dir_y, dir_z)
+                
+                # Trace ray
+                color = trace_ray(cam_x, cam_y, cam_z, dir_norm.x, dir_norm.y, dir_norm.z)
+                
+                # Set pixel
+                pixel(x, y, color.r, color.g, color.b)
+            end;
+        end;
+        
+        dirty = false
+        sample = sample + 1
+        console.log("Frame " + sample + " complete")
+    end;
+    
+    wait(16)  # ~60 FPS
+end;

@@ -1,26 +1,34 @@
-const fs = require("fs");
-const path = require("path");
-const { interpret, getInitialState } = require("./interpreter");
+import fs from 'fs';
+import path from 'path';
+import { interpret, getInitialState } from './interpreter.js';
 
 async function main() {
   // Accept filename as a command-line argument, default to 'example.my_lang'
   const inputFile = process.argv[2] || "example.my_lang";
-  const filePath = path.join(__dirname, inputFile);
+  const filePath = path.join(process.cwd(), inputFile);
   if (!fs.existsSync(filePath)) {
     console.error(`File not found: ${filePath}`);
     process.exit(1);
   }
   const code = fs.readFileSync(filePath, "utf8");
 
+  // Define state variable that will be initialized later
+  let state;
+
   // 1. Define custom native functions
   const customFunctions = {
     // This function modifies the persistent config in the interpreter's state.
-    set_config_value: (state, key, value) => {
+    set_config_value: (key, value) => {
       if (typeof key !== "string") {
         throw new Error("Config key must be a string");
       }
-      state.config[key] = value;
-      return state.config;
+      // Access the config through the state that will be available
+      if (state && state.config) {
+        state.config[key] = value;
+        return state.config;
+      } else {
+        throw new Error("State not available");
+      }
     },
 
     // A simple function to demonstrate returning a value
@@ -55,9 +63,12 @@ async function main() {
   const settings = {
     enableFs: true,
     enableShell: true,
+    limits: {
+        maxCommands: Infinity, // Disabled command limit for local runs
+    }
   };
 
-  const state = getInitialState(callbacks, settings);
+  state = await getInitialState(callbacks, settings);
 
   console.log("--- Running Local Script ---");
   try {

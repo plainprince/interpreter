@@ -1,0 +1,115 @@
+# Interactive Artillery Game
+# Use Arrow Keys to aim and set power. Press Space to fire.
+
+# Game settings
+GRAVITY = 0.1
+GROUND_Y = 60
+
+# Player cannon state
+cannon = { x: 10, y: GROUND_Y, angle: 45, power: 25 }
+barrel_length = 10
+
+# Projectile state
+projectile = null # No projectile active initially
+
+# Target state
+target = { x: 110, y: GROUND_Y, size: 6 }
+
+# Move target to a new random location
+function new_target();
+    target.x = 40 + math.random() * (128 - 50) # Keep it away from the cannon
+end;
+
+# Handle keyboard input
+function onKeyDown(event);
+    # Aiming
+    if (event.key == "ArrowLeft");
+        cannon.angle = math.min(90, cannon.angle + 2)
+    elseif (event.key == "ArrowRight");
+        cannon.angle = math.max(0, cannon.angle - 2)
+    end;
+
+    # Power
+    if (event.key == "ArrowUp");
+        cannon.power = math.min(50, cannon.power + 1)
+    elseif (event.key == "ArrowDown");
+        cannon.power = math.max(5, cannon.power - 1)
+    end;
+    
+    # Firing
+    if (event.key == " " and projectile == null);
+        # Fire a new projectile
+        radians = cannon.angle * math.pi / 180
+        vx = (cannon.power / 5) * math.cos(radians)
+        vy = -(cannon.power / 5) * math.sin(radians)
+        
+        # Start projectile from the end of the barrel
+        start_x = cannon.x + math.cos(radians) * barrel_length
+        start_y = cannon.y - math.sin(radians) * barrel_length
+        
+        projectile = { x: start_x, y: start_y, vx: vx, vy: vy }
+    end;
+end;
+
+# --- Main Game Loop ---
+console.log("Artillery Game!")
+console.log("Left/Right: Aim | Up/Down: Power | Space: Fire")
+
+new_target()
+
+while (true);
+    # --- UPDATE LOGIC ---
+    if (projectile != null);
+        # Apply physics to projectile
+        projectile.vy += GRAVITY
+        projectile.x += projectile.vx
+        projectile.y += projectile.vy
+
+        # Check for collision with target
+        hit = projectile.x >= target.x and projectile.x <= target.x + target.size and projectile.y >= target.y - target.size and projectile.y <= target.y
+        
+        if (hit);
+            console.log("Target Hit!")
+            projectile = null # Remove projectile
+            new_target() # Get a new target
+        elseif (projectile.y >= GROUND_Y or projectile.x > 128 or projectile.x < 0);
+             # Missed, projectile is off-screen or hit the ground
+             console.log("Miss!")
+             projectile = null # Remove projectile
+        end;
+    end;
+
+    # --- DRAWING ---
+    clear()
+
+    # Draw ground
+    rect(0, GROUND_Y, 128, 4, 80, 60, 30)
+
+    # Draw cannon base
+    rect(cannon.x - 4, cannon.y - 6, 8, 6, 100, 100, 100)
+
+    # Draw cannon barrel using a rotated rectangle
+    # We position it at the cannon's base and rotate it around that point
+    # Note: rect rotation is from its center, so we need to offset it
+    radians = cannon.angle * math.pi / 180
+    barrel_x = cannon.x - (barrel_length / 2) + (math.cos(radians) * barrel_length / 2)
+    barrel_y = cannon.y - 3 - (math.sin(radians) * barrel_length / 2)
+    
+    rect(barrel_x, barrel_y, barrel_length, 4, 120, 120, 120, { rotation: -cannon.angle })
+
+    # Draw target
+    rect(target.x, target.y - target.size, target.size, target.size, 255, 0, 0)
+    
+    # Draw projectile
+    if (projectile != null);
+        # Draw a simple circle for the projectile
+        circle(projectile.x, projectile.y, 2, 255, 255, 0)
+    end;
+    
+    # Draw UI text for angle and power
+    # Note: text drawing is not a feature, so we log to console
+    # console.log("Angle: ${cannon.angle}, Power: ${cannon.power}") # This would be ideal
+
+    # Target ~60 FPS
+    wait(16)
+end;

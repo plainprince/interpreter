@@ -1,9 +1,9 @@
-const fs = require('fs');
-const path = require('path');
-const { interpret, getInitialState } = require('./interpreter');
+import fs from 'fs';
+import path from 'path';
+import { interpret, getInitialState } from './interpreter.js';
 
 async function main() {
-    const filePath = path.join(__dirname, 'comprehensive-test.my_lang');
+    const filePath = path.join(process.cwd(), 'comprehensive-test.my_lang');
     const code = fs.readFileSync(filePath, 'utf8');
 
     const onChunk = (chunk) => process.stdout.write(chunk);

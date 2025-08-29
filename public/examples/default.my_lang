@@ -1,0 +1,15 @@
+# Welcome to the Playground!
+console.log("Hello, world!")
+
+# Draw some colorful graphics
+clear()
+rect(50, 50, 100, 50, 255, 100, 100)
+circle(128, 100, 30, 100, 255, 100)
+
+# Interactive - click the canvas to draw!
+function onMouseClick(event);
+    circle(event.x, event.y, 8, 255, 255, 0)
+    console.log("Clicked at:", event.x, event.y)
+end;
+
+# Check out the Documentation for more examples!

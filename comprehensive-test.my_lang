@@ -1,225 +1,120 @@
-# Comprehensive Interpreter Test Suite
+# Comprehensive Test Suite
 
-console.log("=== Starting Comprehensive Interpreter Tests ===");
+console.log("--- Starting Comprehensive Test Suite ---")
 
-# Test 1: Basic Variables and Arithmetic
-console.log("\n--- Test 1: Basic Variables and Arithmetic ---");
-x = 10;
-y = 20;
-z = x + y * 2;
-console.log("x =", x, "y =", y, "z = x + y * 2 =", z);
+# --- 1. Data Types and Variables ---
+console.log("\n--- Testing Data Types ---")
+num = 42
+str = "Hello"
+bool_true = true
+bool_false = false
+null_val = null
+arr = [1, "two", true, [10, 20]]
+obj = { name: "John", age: 30, address: { city: "New York" } }
 
-# Test 2: String operations and interpolation
-console.log("\n--- Test 2: String Operations ---");
-name = "Interpreter";
-version = 1.0;
-message = "Welcome to ${name} v${version}!";
-console.log("Message:", message);
+console.log("Number:", num)
+console.log("String:", str)
+console.log("Boolean (true):", bool_true)
+console.log("Boolean (false):", bool_false)
+console.log("Null:", null_val)
+console.log("Array:", arr[0], arr[1], arr[2], arr[3][1])
+console.log("Object:", obj.name, obj.age, obj.address.city)
 
-# Test 3: Arrays and indexing
-console.log("\n--- Test 3: Arrays and Indexing ---");
-numbers = [1, 2, 3, 4, 5];
-console.log("Original array:", numbers);
-numbers[2] = 99;
-console.log("After numbers[2] = 99:", numbers);
-console.log("First element:", numbers[0]);
-console.log("Last element:", numbers[4]);
+# --- 2. Operators ---
+console.log("\n--- Testing Operators ---")
+# Arithmetic
+console.log("5 + 3 =", 5 + 3)
+console.log("5 - 3 =", 5 - 3)
+console.log("5 * 3 =", 5 * 3)
+console.log("5 / 2 =", 5 / 2)
+console.log("5 % 3 =", 5 % 3)
+# Comparison
+console.log("5 == 5 is", 5 == 5)
+console.log("5 != 3 is", 5 != 3)
+console.log("5 < 3 is", 5 < 3)
+console.log("5 > 3 is", 5 > 3)
+# Logical
+console.log("true and false is", true and false)
+console.log("true or false is", true or false)
+console.log("not true is", not true)
+# Shorthand Assignment
+x = 10
+x += 5
+console.log("x += 5 is", x)
+x -= 2
+console.log("x -= 2 is", x)
+x *= 3
+console.log("x *= 3 is", x)
+x /= 13
+console.log("x /= 13 is", x)
 
-# Test 4: Nested arrays
-console.log("\n--- Test 4: Nested Arrays ---");
-matrix = [[1, 2], [3, 4], [5, 6]];
-console.log("Matrix:", matrix);
-console.log("matrix[1][0] =", matrix[1][0]);
-matrix[0][1] = 42;
-console.log("After matrix[0][1] = 42:", matrix);
-
-# Test 5: Objects
-console.log("\n--- Test 5: Objects ---");
-person = { name: "Alice", age: 30, city: "New York" };
-console.log("Person:", person);
-console.log("Name:", person.name);
-console.log("Age:", person.age);
-person.age = 31;
-console.log("After birthday, age:", person.age);
-
-# Test 6: Functions
-console.log("\n--- Test 6: Functions ---");
-function add(a, b);
-    return a + b;
-end;
-
-function multiply(x, y);
-    result = x * y;
-    console.log("Multiplying", x, "and", y, "=", result);
-    return result;
-end;
-
-sum = add(5, 3);
-product = multiply(4, 7);
-console.log("Sum:", sum, "Product:", product);
-
-# Test 7: Conditional statements
-console.log("\n--- Test 7: Conditional Statements ---");
-score = 85;
-if (score >= 90);
-    grade = "A";
-elseif (score >= 80);
-    grade = "B";
-elseif (score >= 70);
-    grade = "C";
+# --- 3. Control Flow ---
+console.log("\n--- Testing Control Flow ---")
+# If/Elseif/Else
+if (x > 10);
+    console.log("x is > 10")
+elseif (x < 10);
+    console.log("x is < 10")
 else;
-    grade = "F";
+    console.log("x is 10")
 end;
-console.log("Score:", score, "Grade:", grade);
-
-# Test 8: Loops - For loop
-console.log("\n--- Test 8: For Loops ---");
-console.log("Counting from 0 to 4:");
-for (i, 5);
-    console.log("i =", i);
+# While loop
+i = 0
+while (i < 3);
+    console.log("while loop i =", i)
+    i += 1
 end;
-
-# Test 9: Loops - While loop
-console.log("\n--- Test 9: While Loops ---");
-counter = 0;
-console.log("While loop counting to 3:");
-while (counter < 3);
-    console.log("counter =", counter);
-    counter = counter + 1;
+# For loop
+for (j, 3);
+    console.log("for loop j =", j)
 end;
-
-# Test 10: Array operations in loops
-console.log("\n--- Test 10: Array Operations in Loops ---");
-fruits = ["apple", "banana", "cherry", "date"];
-console.log("Fruits array:");
-for (i, fruits.length);
-    console.log("Fruit", i, ":", fruits[i]);
+# Break/Continue
+for (k, 10);
+    if (k == 1); continue; end;
+    if (k == 4); break; end;
+    console.log("break/continue k =", k)
 end;
 
-# Test 11: Nested loops
-console.log("\n--- Test 11: Nested Loops ---");
-console.log("Multiplication table (3x3):");
-for (i, 3);
-    for (j, 3);
-        result = (i + 1) * (j + 1);
-        console.log((i + 1), "x", (j + 1), "=", result);
+# --- 4. Functions ---
+console.log("\n--- Testing Functions ---")
+function add(a, b);
+    return a + b
+end;
+result = add(10, 5)
+console.log("add(10, 5) =", result)
+
+# --- 5. Classes ---
+console.log("\n--- Testing Classes ---")
+class Greeter
+    greeting = "Hello"
+    function constructor(name);
+        this.name = name
+    end;
+    function say_hello();
+        return this.greeting + ", " + this.name
     end;
 end;
+g = new Greeter("World")
+console.log(g.say_hello())
+g.greeting = "Hi"
+console.log(g.say_hello())
 
-# Test 12: Function with arrays
-console.log("\n--- Test 12: Functions with Arrays ---");
-function sum_array(arr);
-    total = 0;
-    for (i, arr.length);
-        total = total + arr[i];
-    end;
-    return total;
-end;
+# --- 6. Built-in Functions ---
+console.log("\n--- Testing Built-in Functions ---")
+# Math
+console.log("math.random() is", math.random())
+console.log("math.floor(3.7) is", math.floor(3.7))
+# Graphics (will just print to console in this test)
+pixel(1, 2, 255, 0, 0)
+rect(10, 10, 5, 5, 0, 255, 0)
+circle(20, 20, 5, 0, 0, 255)
+line(0,0, 30, 30, {thickness: 2})
+# Timing
+console.log("Testing timing... (wait for 1 second)")
+start_time = time()
+wait(1000)
+end_time = time()
+console.log("Time elapsed:", end_time - start_time, "(should be ~1000ms)")
 
-test_numbers = [10, 20, 30, 40, 50];
-array_sum = sum_array(test_numbers);
-console.log("Array:", test_numbers);
-console.log("Sum of array:", array_sum);
 
-# Test 13: Recursive function
-console.log("\n--- Test 13: Recursive Function ---");
-function factorial(n);
-    if (n <= 1);
-        return 1;
-    else;
-        return n * factorial(n - 1);
-    end;
-end;
-
-fact5 = factorial(5);
-console.log("Factorial of 5:", fact5);
-
-# Test 14: Boolean operations
-console.log("\n--- Test 14: Boolean Operations ---");
-a = true;
-b = false;
-console.log("a =", a, "b =", b);
-console.log("a and b =", a and b);
-console.log("a or b =", a or b);
-console.log("not a =", not a);
-console.log("not b =", not b);
-
-# Test 15: Comparison operations
-console.log("\n--- Test 15: Comparison Operations ---");
-num1 = 10;
-num2 = 20;
-console.log("num1 =", num1, "num2 =", num2);
-console.log("num1 == num2:", num1 == num2);
-console.log("num1 != num2:", num1 != num2);
-console.log("num1 < num2:", num1 < num2);
-console.log("num1 > num2:", num1 > num2);
-console.log("num1 <= num2:", num1 <= num2);
-console.log("num1 >= num2:", num1 >= num2);
-
-# Test 16: Complex expressions
-console.log("\n--- Test 16: Complex Expressions ---");
-complex_result = (10 + 5) * (20 - 15) / 3;
-console.log("(10 + 5) * (20 - 15) / 3 =", complex_result);
-
-# Test 17: Array methods
-console.log("\n--- Test 17: Array Methods ---");
-dynamic_array = [1, 2, 3];
-console.log("Before push:", dynamic_array);
-dynamic_array.push(4);
-dynamic_array.push(5);
-console.log("After push(4, 5):", dynamic_array);
-console.log("Array length:", dynamic_array.length);
-
-# Test 18: Math operations
-console.log("\n--- Test 18: Math Operations ---");
-console.log("Math.round(3.7):", math.round(3.7));
-console.log("Math.floor(3.7):", math.floor(3.7));
-console.log("Math.ceil(3.2):", math.ceil(3.2));
-console.log("Math.abs(-5):", math.abs(-5));
-
-# Test 19: Break and continue
-console.log("\n--- Test 19: Break and Continue ---");
-console.log("Testing break (should stop at 3):");
-for (i, 10);
-    if (i == 3);
-        break;
-    end;
-    console.log("Loop iteration:", i);
-end;
-
-console.log("Testing continue (should skip 2):");
-for (i, 5);
-    if (i == 2);
-        continue;
-    end;
-    console.log("Loop iteration:", i);
-end;
-
-# Test 20: Error handling edge cases
-console.log("\n--- Test 20: Edge Cases ---");
-empty_array = [];
-console.log("Empty array length:", empty_array.length);
-
-null_value = null;
-undefined_value = undefined;
-console.log("Null value:", null_value);
-console.log("Undefined value:", undefined_value);
-
-# Test 21: Function scoping
-console.log("\n--- Test 21: Function Scoping ---");
-global_var = "global";
-
-function test_scope(param);
-    local_var = "local";
-    param = "modified";
-    console.log("Inside function - global_var:", global_var);
-    console.log("Inside function - local_var:", local_var);
-    console.log("Inside function - param:", param);
-end;
-
-test_var = "original";
-test_scope(test_var);
-console.log("Outside function - test_var:", test_var);
-console.log("Outside function - global_var:", global_var);
-
-console.log("\n=== All Comprehensive Tests Completed Successfully! ===");
+console.log("\n--- Comprehensive Test Suite Finished ---")

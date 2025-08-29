@@ -1,175 +1,131 @@
-const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
-const { interpret, getInitialState } = require('./interpreter');
+// interpreter/interpreter-worker.js
+// =====================================
+// Web Worker interface for the interpreter
+// =====================================
+// Receives messages from main thread:
+//   { type: 'run', code, settings, customFunctions, limits }
+// Sends messages back:
+//   { type: 'output', chunk }
+//   { type: 'canvas', command }
+//   { type: 'done', result }
+//   { type: 'error', error }
+//   { type: 'clear' }
+//   { type: 'usage', usage }
+//
+// This allows safe execution of user code in a sandboxed thread with resource limits.
+//
+// Author: [Your Name]
+// License: MIT
+// =====================================
 
-if (!isMainThread) {
-    // Worker thread code
-    const { options } = workerData;
-    let state = null;
-    let isExecuting = false;
-    let executionTimeout = null;
-    let cpuUsageInterval = null;
-    let startTime = null;
-    let maxExecutionTime = 60000; // 60 seconds default
-    let cpuLimitExceeded = false;
+// Use require for Node.js worker environment
+const { tokenize } = require('./tokenizer.js');
+const { parse } = require('./parser.js');
+const { evalNode } = require('./evaluator.js');
+const { getInitialState } = require('./utils.js');
+const { interpret } = require('./interpreter.js');
 
-    // CPU usage monitoring
-    function monitorCPUUsage() {
-        const hrTime = process.hrtime();
-        const currentTime = hrTime[0] * 1000 + hrTime[1] / 1000000;
-        
-        if (startTime) {
-            const elapsed = currentTime - startTime;
-            const cpuUsage = process.cpuUsage();
-            const totalCpu = (cpuUsage.user + cpuUsage.system) / 1000; // Convert to ms
-            const cpuPercent = (totalCpu / elapsed) * 100;
-            
-            // Limit CPU usage to prevent abuse
-            if (cpuPercent > 80 && elapsed > 5000) { // 80% CPU for more than 5 seconds
-                cpuLimitExceeded = true;
-                parentPort.postMessage({
-                    type: 'error',
-                    payload: 'CPU usage limit exceeded. Execution terminated.'
-                });
-                cleanup();
-            }
-        }
-    }
+let running = false;
+let state = null;
+let usageInterval = null;
 
-    function cleanup() {
-        isExecuting = false;
-        if (executionTimeout) {
-            clearTimeout(executionTimeout);
-            executionTimeout = null;
-        }
-        if (cpuUsageInterval) {
-            clearInterval(cpuUsageInterval);
-            cpuUsageInterval = null;
-        }
-        startTime = null;
-        cpuLimitExceeded = false;
-    }
-
-    // Create callbacks for the interpreter
-    const callbacks = {
-        onChunk: (chunk) => {
-            if (isExecuting && !cpuLimitExceeded) {
-                parentPort.postMessage({ type: 'chunk', payload: chunk });
-            }
-        },
-        onCanvasUpdate: (command) => {
-            if (isExecuting && !cpuLimitExceeded) {
-                parentPort.postMessage({ type: 'canvasUpdate', payload: command });
-            }
-        },
-        onConsoleClear: () => {
-            if (isExecuting && !cpuLimitExceeded) {
-                parentPort.postMessage({ type: 'console_clear' });
-            }
-        },
-        wait: async (ms) => {
-            if (!isExecuting || cpuLimitExceeded) return;
-            
-            // Limit wait time to prevent infinite delays
-            const limitedMs = Math.min(ms, 10000); // Max 10 seconds
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    if (isExecuting) resolve();
-                }, limitedMs);
-            });
-        },
-        customFunctions: options.customFunctions || {}
-    };
-
-    // Handle messages from main thread
-    parentPort.on('message', async (message) => {
-        const { type, code, settings, name, payload } = message;
-
-        switch (type) {
-            case 'init':
-                try {
-                    isExecuting = true;
-                    startTime = Date.now();
-                    
-                    // Set execution timeout
-                    executionTimeout = setTimeout(() => {
-                        if (isExecuting) {
-                            parentPort.postMessage({
-                                type: 'error',
-                                payload: 'Execution timeout reached'
-                            });
-                            cleanup();
-                        }
-                    }, maxExecutionTime);
-
-                    // Start CPU monitoring
-                    cpuUsageInterval = setInterval(monitorCPUUsage, 1000);
-
-                    // Create initial state with security restrictions
-                    const secureSettings = {
-                        enableFs: options.enableFs || false,
-                        enableShell: options.enableShell || false,
-                        ...settings
-                    };
-
-                    state = getInitialState(callbacks, secureSettings);
-
-                    // Execute the code
-                    await interpret(code, state);
-
-                    if (isExecuting) {
-                        parentPort.postMessage({ type: 'result' });
-                    }
-                } catch (error) {
-                    if (isExecuting) {
-                        parentPort.postMessage({
-                            type: 'error',
-                            payload: error.message || 'An error occurred during execution'
-                        });
-                    }
-                } finally {
-                    cleanup();
-                }
-                break;
-
-            case 'event':
-                // Handle events like keyboard input
-                if (state && state.eventHandlers && state.eventHandlers[name]) {
-                    try {
-                        await state.eventHandlers[name](payload);
-                    } catch (error) {
-                        // Ignore event handler errors to prevent crashes
-                        console.warn('Event handler error:', error.message);
-                    }
-                } else if (state && state.variables) {
-                    // Check for global event handler functions
-                    const handlerName = name;
-                    if (state.variables[handlerName] && typeof state.variables[handlerName] === 'function') {
-                        try {
-                            await state.variables[handlerName](payload);
-                        } catch (error) {
-                            console.warn('Global event handler error:', error.message);
-                        }
-                    }
-                }
-                break;
-
-            case 'stop':
-                cleanup();
-                break;
-        }
-    });
-
-    // Handle worker termination
-    process.on('SIGTERM', cleanup);
-    process.on('SIGINT', cleanup);
-
-} else {
-    // Main thread code - export the worker creation function
-    module.exports = {
-        createInterpreterWorker: (options = {}) => {
-            return new Worker(__filename, {
-                workerData: { options }
-            });
-        }
-    };
+function post(type, data) {
+  self.postMessage({ type, ...data });
 }
+
+self.onmessage = async function (e) {
+  const msg = e.data;
+  if (!msg || !msg.type) return;
+
+  if (msg.type === 'run') {
+    if (running) {
+      post('error', { error: 'Interpreter is already running.' });
+      return;
+    }
+    running = true;
+    
+    // Set up usage reporting interval
+    
+    try {
+      const callbacks = {
+        onChunk: (chunk) => post('output', { chunk }),
+        onConsoleClear: () => post('clear', {}),
+        onCanvasUpdate: (command) => post('canvas', { command }),
+        wait: async (ms) => {
+          return new Promise(resolve => setTimeout(resolve, ms));
+        },
+        customFunctions: msg.customFunctions || {},
+      };
+      
+      // Include resource limits in settings
+      const settings = {
+        ...(msg.settings || {}),
+        limits: msg.limits || {
+          maxCommands: Infinity,
+          maxMemoryMB: 100,
+          maxCpuTimeMs: 10000
+        }
+      };
+      
+      state = getInitialState(callbacks, settings);
+
+      // Report usage every 500ms during execution
+      usageInterval = setInterval(() => {
+        if (state && state.resourceLimiter) {
+          post('usage', { usage: state.resourceLimiter.getUsage() });
+        }
+      }, 500);
+
+      const result = await interpret(msg.code, state);
+      
+      // If exit was called, always stop regardless of event handlers
+      if (result === "exit" || state.shouldExit) {
+        clearInterval(usageInterval);
+        running = false;
+        post('usage', { usage: state.resourceLimiter.getUsage() }); // Final usage report
+        post('done', { result: 'exit' });
+        return;
+      }
+      
+      // Check if any event handlers were defined. If so, the script stays alive.
+      const hasEventHandlers = Object.values(state.eventHandlers).some(handler => handler !== null);
+
+      if (hasEventHandlers) {
+        // The script is event-driven, so we keep the worker alive to listen for events.
+        // The usage interval also continues to run.
+      } else {
+        // No event handlers, so the script is finished.
+        clearInterval(usageInterval);
+        running = false;
+        post('usage', { usage: state.resourceLimiter.getUsage() }); // Final usage report
+        post('done', { result });
+      }
+    } catch (error) {
+      clearInterval(usageInterval);
+      running = false;
+      post('error', { error: (error && error.message) || String(error) });
+    }
+    return;
+  }
+
+  // Handle getUsage ping from server
+  if (msg.type === 'getUsage') {
+    if (state && state.resourceLimiter) {
+      post('usage', { usage: state.resourceLimiter.getUsage() });
+    }
+    return;
+  }
+
+  // Handle event messages: { type: 'event', handler, event }
+  if (msg.type === 'event') {
+    if (!state || !state.eventHandlers) return;
+    const handler = state.eventHandlers[msg.handler];
+    if (typeof handler === 'function') {
+      // Call the handler with the event object
+      Promise.resolve(handler(msg.event)).catch((err) => {
+        post('output', { chunk: '[Event handler error] ' + (err && err.message ? err.message : err) + '\n' });
+      });
+    }
+    return;
+  }
+};

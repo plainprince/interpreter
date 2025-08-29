@@ -1,0 +1,87 @@
+# Simple Snake Game
+# Use Arrow Keys to move the snake.
+
+# Game settings
+GRID_SIZE = 16
+TILE_SIZE = 8
+WIDTH = 128 / TILE_SIZE # Canvas is 128x64 by default
+HEIGHT = 64 / TILE_SIZE
+
+# Initial snake state
+snake = [{x: 3, y: 2}, {x: 2, y: 2}, {x: 1, y: 2}]
+direction = {x: 1, y: 0} # Moving right
+next_direction = {x: 1, y: 0}
+food = {x: 10, y: 5}
+score = 0
+game_over = false
+
+# Place new food randomly
+function reset_food();
+    food.x = math.floor(math.random() * WIDTH)
+    food.y = math.floor(math.random() * HEIGHT)
+end;
+
+# Handle keyboard input to change snake's direction
+function onKeyDown(event);
+    if (event.key == "ArrowUp" and direction.y == 0);
+        next_direction = {x: 0, y: -1}
+    elseif (event.key == "ArrowDown" and direction.y == 0);
+        next_direction = {x: 0, y: 1}
+    elseif (event.key == "ArrowLeft" and direction.x == 0);
+        next_direction = {x: -1, y: 0}
+    elseif (event.key == "ArrowRight" and direction.x == 0);
+        next_direction = {x: 1, y: 0}
+    end;
+end;
+
+# --- Main Game Loop ---
+console.log("Snake! Use arrow keys to move.")
+console.log("Eat the red food. Don't hit the walls.")
+
+while (true);
+    if (game_over);
+        # You could add a restart mechanic here
+        console.log("Game Over! Final Score:", score)
+        wait(5000) # Wait 5 seconds
+        exit()     # Stop the game
+    end;
+
+    # Update direction safely (prevents reversing into self)
+    direction = next_direction
+
+    # Move snake
+    head = {x: snake[0].x + direction.x, y: snake[0].y + direction.y}
+    snake.unshift(head) # Add new head
+
+    # Check for collision with food
+    if (head.x == food.x and head.y == food.y);
+        score += 1
+        console.log("Score:", score)
+        reset_food()
+    else;
+        snake.pop() # Remove tail if no food was eaten
+    end;
+
+    # Check for collision with walls
+    if (head.x < 0 or head.x >= WIDTH or head.y < 0 or head.y >= HEIGHT);
+        game_over = true
+        console.error("Game Over! Hit a wall.")
+    end;
+
+    # --- Drawing ---
+    clear()
+
+    # Draw snake
+    for (i, snake.length);
+        segment = snake[i]
+        # Head is brighter
+        green = 255 - i * 20 
+        rect(segment.x * TILE_SIZE, segment.y * TILE_SIZE, TILE_SIZE, TILE_SIZE, 0, green, 0)
+    end;
+    
+    # Draw food
+    rect(food.x * TILE_SIZE, food.y * TILE_SIZE, TILE_SIZE, TILE_SIZE, 255, 0, 0)
+    
+    # Control game speed
+    wait(100) # 10 frames per second
+end;

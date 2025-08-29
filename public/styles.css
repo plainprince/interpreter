@@ -4,6 +4,24 @@ body {
     color: #d4d4d4;
     margin: 0;
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+#editor {
+    flex: 1;
+    min-height: 300px;
+}
+
+#canvas, #output, #usage {
+    display: none; /* Hidden on main page, shown in modal */
+}
+
+/* Override the display:none for elements inside the a shown modal */
+.modal.show #output,
+.modal.show #usage {
+    display: block;
 }
 
 .button-container {
@@ -31,6 +49,29 @@ body {
     background-color: #157ac5;
 }
 
+#settings-content button {
+    padding: 10px 20px;
+    font-size: 16px;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    background-color: #0e639c; /* Default blue */
+}
+
+#settings-content button:hover {
+    background-color: #157ac5;
+}
+
+#settings-content .btn-danger {
+    background-color: #d12f2f;
+}
+
+#settings-content .btn-danger:hover {
+    background-color: #e04a4a;
+}
+
 /* Make the editor take up the full viewport */
 #editor {
     min-height: 100vh;
@@ -41,6 +82,9 @@ body {
     min-height: 100vh;
 }
 
+.CodeMirror {
+    height: 100% !important;
+}
 
 
 .modal {
@@ -51,10 +95,13 @@ body {
     top: 0;
     width: 100%;
     height: 100%;
-    overflow: hidden;
     background-color: rgba(0,0,0,0.6);
     justify-content: center;
     align-items: center;
+}
+
+.modal.show {
+    display: flex !important;
 }
 
 .modal-content {
@@ -71,6 +118,18 @@ body {
 
 #output-modal .modal-content {
     height: 80%;
+}
+
+#modal-canvas {
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    background-color: #000;
+    max-height: 80vh;
 }
 
 .close-button {
@@ -200,6 +259,30 @@ body.modal-open {
 
 
 .CodeMirror {
-  border: 1px solid #eee;
+  border: 1px solid #3c3c3c;
   height: auto;
+  min-height: 400px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 14px;
+}
+
+.CodeMirror-hint-custom {
+  color: #50fa7b;
+  font-weight: bold;
+}
+
+.CodeMirror-hints {
+  background: #282a36;
+  border: 1px solid #44475a;
+  color: #f8f8f2;
+}
+
+.CodeMirror-hint {
+  color: #f8f8f2;
+  padding: 2px 6px;
+}
+
+.CodeMirror-hint:hover {
+  background: #44475a;
+  color: #50fa7b;
 }

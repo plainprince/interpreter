@@ -259,7 +259,7 @@
         </style>
     </head>
     <body>
-        <div id="editor"></div>
+        <div id="editor"><textarea></textarea></div>
         <div class="button-container">
             <button id="run">Run</button>
             <button id="docs">Documentation</button>
@@ -298,7 +298,20 @@
         <div id="output-modal" class="modal">
             <div class="modal-content">
                 <span class="close-button">&times;</span>
-                <div id="output"></div>
+                <h2>Code Output</h2>
+                <div style="display: flex; gap: 20px;">
+                    <div style="flex: 1;">
+                        <h3>Console Output</h3>
+                        <div id="output" style="background-color: #1e1e1e; color: #fff; font-family: monospace; padding: 10px; height: 300px; overflow-y: auto; border: 1px solid #3c3c3c;"></div>
+                        <div id="usage" style="font-family: monospace; font-size: 12px; color: #666; padding: 5px;">CPU: 0ms | RAM: 0MB | Commands: 0</div>
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column;">
+                        <h3>Canvas Output</h3>
+                        <div id="canvas-container" style="display: flex; justify-content: center; align-items: flex-start; border: 1px solid #3c3c3c;">
+                            <canvas id="modal-canvas" width="256" height="256" style="max-width: 100%; height: auto; object-fit: contain; background-color: #000;"></canvas>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -316,15 +329,7 @@
                             current code.
                         </p>
                         <div id="examples-container">
-                            <button class="example-btn" data-example="flappy">
-                                Flappy Bird
-                            </button>
-                            <button class="example-btn" data-example="snake">
-                                Snake
-                            </button>
-                            <button class="example-btn" data-example="artillery">
-                                Artillery Game
-                            </button>
+                            <!-- Examples will be loaded dynamically by JavaScript -->
                         </div>
                     </div>
 
@@ -597,6 +602,29 @@ console.log(player.score); # Prints 0</code></pre>
                     </div>
 
                     <div class="docs-section">
+                        <h3>Classes</h3>
+                        <p>
+                            Define custom object blueprints using <code>class</code>. Classes can contain fields (variables) and methods (functions). Use the <code>new</code> keyword to create instances of a class. The <code>this</code> keyword is used inside a method to refer to the instance itself.
+                        </p>
+                        <pre><code class="language-mylang">class Player
+    x = 10
+    y = 50
+
+    function constructor(startX)
+        this.x = startX
+    end
+
+    function move(dx)
+        this.x = this.x + dx
+    end
+end
+
+p1 = new Player(20) # Creates a new player at x=20
+p1.move(5)
+console.log(p1.x) # Prints 25</code></pre>
+                    </div>
+
+                    <div class="docs-section">
                         <h3>Built-in Globals & Functions</h3>
                         <h4><code>console</code></h4>
                         <p>
@@ -683,17 +711,43 @@ console.log("You rolled a", roll);</code></pre>
                                 (0-255).
                             </li>
                             <li>
-                                <code>rect(x, y, width, height, r, g, b)</code>:
-                                Draws a filled rectangle.
+                                <code>rect(x, y, width, height, r, g, b, options)</code>:
+                                Draws a filled rectangle. <code>options</code> is an object that can contain <code>{ rotation: degrees }</code>. The rotation is applied from the center of the rectangle.
                             </li>
                             <li>
-                                <code>clear()</code>: Clears the entire canvas
-                                to the background color defined in Settings.
+                                <code>circle(x, y, radius, r, g, b, scale_x, scale_y)</code>:
+                                Draws a circle or an ellipse. <code>scale_x</code> and <code>scale_y</code> are optional and default to 1.
+                            </li>
+                            <li>
+                                <code>clear(r, g, b)</code>: Clears the entire canvas
+                                to the background color defined in Settings, or to the specified RGB color (0-255) if provided.
+                            </li>
+                            <li>
+                                <code>sprite(x, y, name, options)</code>: Draws a pre-loaded sprite at position (x, y). <code>options</code> is an object that can contain <code>{ rotation: degrees, scale: number }</code>. The available sprite name is currently: <code>"bean"</code>.
+                            </li>
+                            <li>
+                                <code>line(x1, y1, x2, y2, options)</code>: Draws a line between two points. <code>options</code> is an object that can contain <code>{ r, g, b, thickness, dashed }</code>.
                             </li>
                         </ul>
                         <pre><code class="language-mylang"># Draw a red pixel and a blue rectangle
 pixel(50, 20, 255, 0, 0);
-rect(10, 10, 20, 30, 0, 0, 255);</code></pre>
+rect(10, 10, 20, 30, 0, 0, 255);
+
+# Draw the 'bean' sprite at position (80, 40)
+sprite(80, 40, "bean")
+
+# Draw a rotated rectangle
+rect(100, 50, 40, 20, 0, 255, 0, { rotation: 45 })
+
+# Draw an ellipse
+circle(150, 80, 20, 255, 255, 0, 1.5, 0.5)
+
+# Draw a scaled and rotated sprite
+sprite(200, 60, "bean", { rotation: 90, scale: 2 })
+
+# Draw a thick, dashed, green line
+line(10, 50, 240, 50, { r: 0, g: 255, b: 0, thickness: 3, dashed: true })
+</code></pre>
 
                         <h4>Timing and Control</h4>
                         <ul>
@@ -706,22 +760,58 @@ rect(10, 10, 20, 30, 0, 0, 255);</code></pre>
                                 >
                             </li>
                             <li>
-                                <code>time()</code>: Returns the number of
-                                milliseconds since the program started. Useful
-                                for creating timers.
+                                <code>time()</code>: Returns the current timestamp
+                                in milliseconds. Useful for creating timers.
+                            </li>
+                            <li>
+                                <code>deltaTime()</code>: Returns the time in 
+                                milliseconds since the last call to deltaTime().
+                                <strong>Perfect for smooth animations and frame-rate 
+                                independent movement.</strong>
+                            </li>
+                            <li>
+                                <code>fps()</code>: Returns the current frames per 
+                                second based on deltaTime() calls.
+                            </li>
+                            <li>
+                                <code>uptime()</code>: Returns the number of
+                                milliseconds since the program started.
+                            </li>
+                            <li>
+                                <code>resetTimer()</code>: Resets the internal 
+                                timing counters. Useful for restarting games or 
+                                timing sections.
                             </li>
                             <li>
                                 <code>exit()</code>: Immediately stops the
                                 entire program.
                             </li>
                         </ul>
-                        <pre><code class="language-mylang">start_time = time();
+                        <pre><code class="language-mylang"># Basic timing
+start_time = uptime();
 console.log("Waiting for 1 second...");
 wait(1000);
-end_time = time();
+end_time = uptime();
 console.log("Elapsed time:", (end_time - start_time), "ms");
-exit();
-console.log("This will not be printed.");</code></pre>
+
+# Game loop with deltaTime for smooth movement
+player_x = 0;
+player_speed = 100; # pixels per second
+
+while (true);
+    dt = deltaTime(); # Get time since last frame
+    
+    # Move player smoothly regardless of framerate
+    player_x += player_speed * (dt / 1000);
+    
+    # Draw player
+    rect(player_x, 50, 20, 20, 255, 0, 0);
+    
+    # Show performance info
+    console.log("FPS:", fps());
+    
+    wait(16); # Target ~60 FPS
+end;</code></pre>
                     </div>
 
                     <div class="docs-section">
@@ -732,6 +822,8 @@ console.log("This will not be printed.");</code></pre>
                             will be called automatically by the runtime when the
                             user interacts with the program.
                         </p>
+                        
+                        <h4>Keyboard Events</h4>
                         <ul>
                             <li>
                                 <code>onKeyDown(event)</code>: Called when a key
@@ -743,19 +835,64 @@ console.log("This will not be printed.");</code></pre>
                             </li>
                         </ul>
                         <p>
-                            The <code>event</code> object passed to these
-                            functions contains information about the event, such
-                            as <code>event.key</code> (e.g., "a", " ", "Enter").
+                            The <code>event</code> object for keyboard events contains:
+                            <code>event.key</code> (e.g., "a", " ", "Enter", "ArrowUp").
                         </p>
                         <pre><code class="language-mylang">function onKeyDown(event);
     console.log("Key pressed:", event.key);
     if (event.key == " ");
         # Player jumps
     end;
+    if (event.key == "ArrowLeft");
+        # Move left
+    end;
 end;
 
 function onKeyUp(event);
     console.log("Key released:", event.key);
+end;</code></pre>
+
+                        <h4>Mouse Events</h4>
+                        <ul>
+                            <li>
+                                <code>onMouseMove(event)</code>: Called when the
+                                mouse moves over the canvas.
+                            </li>
+                            <li>
+                                <code>onMouseDown(event)</code>: Called when a
+                                mouse button is pressed down.
+                            </li>
+                            <li>
+                                <code>onMouseUp(event)</code>: Called when a
+                                mouse button is released.
+                            </li>
+                            <li>
+                                <code>onMouseClick(event)</code>: Called when a
+                                mouse button is clicked (down + up).
+                            </li>
+                        </ul>
+                        <p>
+                            The <code>event</code> object for mouse events contains:
+                            <code>event.x</code>, <code>event.y</code> (canvas coordinates),
+                            <code>event.button</code> (0=left, 1=middle, 2=right),
+                            and modifier keys like <code>event.ctrl</code>, <code>event.shift</code>.
+                        </p>
+                        <pre><code class="language-mylang">function onMouseClick(event);
+    console.log("Clicked at:", event.x, event.y);
+    
+    # Draw a circle where clicked
+    circle(event.x, event.y, 10, 255, 255, 0);
+    
+    if (event.button == 0);
+        console.log("Left click");
+    elseif (event.button == 2);
+        console.log("Right click");
+    end;
+end;
+
+function onMouseMove(event);
+    # Draw trail following mouse
+    pixel(event.x, event.y, 255, 0, 0);
 end;</code></pre>
                     </div>
                 </div>
@@ -812,6 +949,13 @@ end;</code></pre>
                             max="255"
                             value="0"
                         />
+                        <label for="bg-color-picker">Picker:</label>
+                        <input type="color" id="bg-color-picker" value="#000000" />
+                    </div>
+                    <div class="settings-section">
+                        <h3>Reset</h3>
+                        <p>This will clear your saved code and settings and restore the default example.</p>
+                        <button id="reset-btn" class="btn-danger">Reset to Default</button>
                     </div>
                 </div>
             </div>
@@ -819,6 +963,18 @@ end;</code></pre>
 
         <script src="/socket.io/socket.io.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-        <script type="module" src="playground.js"></script>
+        
+        <!-- CodeMirror 5 for better browser compatibility -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/dracula.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closebrackets.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/matchbrackets.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/javascript-hint.min.js"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.min.css">
+        
+        <script src="playground.js"></script>
     </body>
 </html>

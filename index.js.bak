@@ -43,7 +43,7 @@ app.post('/api/register', async (req, res) => {
     try {
         const hashedPassword = await bcrypt.hash(password, saltRounds);
         const stmt = db.prepare('INSERT INTO users (username, password) VALUES (?, ?)');
-        const info = await stmt.run(username, hashedPassword);
+        const info = stmt.run(username, hashedPassword);
         req.session.userId = info.lastInsertRowid;
         
         // Explicitly save the session before sending the response
@@ -64,10 +64,10 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     const stmt = db.prepare('SELECT * FROM users WHERE username = ?');
-    const user = await stmt.get(username);
+    const user = stmt.get(username);
 
     if (user && bcrypt.compareSync(password, user.password)) {
         req.session.userId = user.id;
@@ -121,7 +121,7 @@ function processGuestQueue() {
         item.socket.emit('queue_update', { position: index + 1 });
     });
 
-    runInterpreter(socket, code, settings, false, () => {
+    runInterpreter(socket, code, settings, () => {
         isGuestRunnerActive = false;
         processGuestQueue();
     });
@@ -136,7 +136,7 @@ io.on('connection', (socket) => {
         const isLoggedIn = !!socket.request.session?.userId;
 
         if (isLoggedIn) {
-            runInterpreter(socket, code, settings, isLoggedIn);
+            runInterpreter(socket, code, settings);
         } else {
             const queuePosition = guestQueue.length + 1;
             socket.emit('queue_update', { position: queuePosition });
@@ -146,27 +146,18 @@ io.on('connection', (socket) => {
     });
 });
 
-function runInterpreter(socket, code, settings, isLoggedIn, onCompleteCallback = () => {}) {
+function runInterpreter(socket, code, settings, onCompleteCallback = () => {}) {
     const userId = socket.request.session?.userId;
-    const timeoutDuration = 60000; // 60 seconds for everyone
+    const isLoggedIn = !!userId;
+    const timeoutDuration = isLoggedIn ? 60000 : 10000;
 
     console.log(`[${new Date().toISOString()}] Starting interpreter for ${socket.id}${userId ? ` (User ID: ${userId})` : ' (Guest)'}. Timeout: ${timeoutDuration / 1000}s.`);
     
     let worker;
     let timeout;
     let eventHandlers = {};
-    let isRunning = false;
-
-    // Enhanced resource limits for different user types
-    const limits = {
-        maxCommands: Infinity, // No command limit
-        maxMemoryMB: isLoggedIn ? 200 : 50,
-        maxCpuTimeMs: isLoggedIn ? 60000 : 10000,
-        ...(settings.limits || {})
-    };
 
     const cleanup = () => {
-        isRunning = false;
         if (timeout) clearTimeout(timeout);
         if (worker) {
             worker.terminate();
@@ -175,10 +166,6 @@ function runInterpreter(socket, code, settings, isLoggedIn, onCompleteCallback =
         if (Object.keys(eventHandlers).length > 0) {
             socket.off('keyDown', eventHandlers.onKeyDown);
             socket.off('keyUp', eventHandlers.onKeyUp);
-            socket.off('mouseMove', eventHandlers.onMouseMove);
-            socket.off('mouseDown', eventHandlers.onMouseDown);
-            socket.off('mouseUp', eventHandlers.onMouseUp);
-            socket.off('mouseClick', eventHandlers.onMouseClick);
             eventHandlers = {};
         }
         socket.off('stopExecution', onStopExecution);
@@ -188,7 +175,6 @@ function runInterpreter(socket, code, settings, isLoggedIn, onCompleteCallback =
 
     const onStopExecution = () => {
         console.log(`[${new Date().toISOString()}] Terminated worker for ${socket.id} by client request.`);
-        socket.emit('output', { chunk: '[Execution stopped by user]\n' });
         cleanup();
     };
 
@@ -205,88 +191,52 @@ function runInterpreter(socket, code, settings, isLoggedIn, onCompleteCallback =
     socket.on('stopExecution', onStopExecution);
     socket.on('disconnect', onDisconnect);
 
-    // Create worker with proper module support
-    worker = new Worker(resolve(__dirname, 'interpreter-worker.js'));
-    isRunning = true;
+    worker = new Worker(resolve(__dirname, 'interpreter-worker.js'), {
+        workerData: {
+            options: {
+                enableFs: false,
+                enableShell: false,
+            }
+        }
+    });
 
-    // Set up timeout
     timeout = setTimeout(() => {
         console.log(`[${new Date().toISOString()}] Execution timed out for ${socket.id}${userId ? ` (User ID: ${userId})` : ' (Guest)'}.`);
-        socket.emit('error', { error: `Execution timed out after ${timeoutDuration / 1000} seconds.` });
-        socket.emit('done', { result: 'timeout' });
+        socket.emit('chunk', `<span style="color: red;">Execution timed out after ${timeoutDuration / 1000} seconds.</span>`);
+        socket.emit('result', '\u200B');
         cleanup();
     }, timeoutDuration);
 
-    // Set up usage monitoring for live updates
-    // This is now handled by the worker itself. The server just forwards the messages.
-
-    // Enhanced event handlers for full interactivity
     const createEventHandler = (eventName) => (data) => {
-        if (worker && isRunning) {
-            worker.postMessage({ type: 'event', handler: eventName, event: data });
+        if (worker) {
+            worker.postMessage({ type: 'event', name: eventName, payload: data });
         }
     };
-    
     eventHandlers = {
         onKeyDown: createEventHandler('onKeyDown'),
         onKeyUp: createEventHandler('onKeyUp'),
-        onMouseMove: createEventHandler('onMouseMove'),
-        onMouseDown: createEventHandler('onMouseDown'),
-        onMouseUp: createEventHandler('onMouseUp'),
-        onMouseClick: createEventHandler('onMouseClick'),
     };
-    
-    // Register all event listeners
     socket.on('keyDown', eventHandlers.onKeyDown);
     socket.on('keyUp', eventHandlers.onKeyUp);
-    socket.on('mouseMove', eventHandlers.onMouseMove);
-    socket.on('mouseDown', eventHandlers.onMouseDown);
-    socket.on('mouseUp', eventHandlers.onMouseUp);
-    socket.on('mouseClick', eventHandlers.onMouseClick);
 
-    // Enhanced worker message handling with streaming support
-    worker.on('message', (msg) => {
-        if (!msg || !msg.type) return;
-
-        switch (msg.type) {
-            case 'output':
-                // Stream output chunks in real-time
-                socket.emit('output', { chunk: asciiToHtml(sanitizeHTML(msg.chunk)) });
-                break;
-                
-            case 'canvas':
-                // Stream canvas updates for live graphics
-                socket.emit('canvas', { command: msg.command });
-                break;
-                
-            case 'clear':
-                // Clear console output
-                socket.emit('clear');
-                break;
-                
-            case 'usage':
-                // Stream resource usage for monitoring
-                socket.emit('usage', { usage: msg.usage });
-                break;
-                
-            case 'done':
-                socket.emit('done', { result: msg.result || 'OK' });
-                cleanup();
-                break;
-                
-            case 'error':
-                socket.emit('error', { error: msg.error });
-                cleanup();
-                break;
-                
-            default:
-                console.warn(`Unknown message type from worker: ${msg.type}`);
+    worker.on('message', ({ type, payload }) => {
+        if (type === 'chunk') socket.emit('chunk', asciiToHtml(sanitizeHTML(payload)));
+        else if (type === 'canvasUpdate') socket.emit('canvasUpdate', payload);
+        else if (type === 'console_clear') socket.emit('console_clear');
+        else if (type === 'result') {
+            socket.emit('result', '\u200B');
+            cleanup();
+        } else if (type === 'error') {
+            socket.emit('chunk', `<span style="color: red;">${asciiToHtml(sanitizeHTML(payload))}</span>`);
+            socket.emit('result', '\u200B');
+            cleanup();
         }
     });
 
     worker.on('error', (error) => {
         console.error(`[${new Date().toISOString()}] Worker error for ${socket.id}:`, error);
-        socket.emit('error', { error: error.message });
+        socket.emit('chunk', `<span style="color: red;">An unexpected error occurred: ${error.message}</span>`);
+        socket.emit('result', '\u200B');
         cleanup();
     });
 
@@ -294,27 +244,10 @@ function runInterpreter(socket, code, settings, isLoggedIn, onCompleteCallback =
         if (code !== 0) {
             console.log(`[${new Date().toISOString()}] Worker for ${socket.id} exited with code ${code}`);
         }
-        if (isRunning) {
-            socket.emit('done', { result: 'exit' });
-            cleanup();
-        }
+        cleanup();
     });
 
-    // Start execution with enhanced settings
-    const enhancedSettings = {
-        ...settings,
-        enableFs: false,
-        enableShell: false,
-        limits,
-    };
-
-    worker.postMessage({ 
-        type: 'run', 
-        code, 
-        settings: enhancedSettings,
-        limits,
-        customFunctions: {}
-    });
+    worker.postMessage({ type: 'init', code, settings });
 }
 
 function sanitizeHTML(text) {
@@ -333,4 +266,3 @@ function asciiToHtml(text) {
 server.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
-runInterpreter

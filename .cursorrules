@@ -1,0 +1,18 @@
+# Cursor IDE Rules for Interpreter Project
+
+## Package Manager
+- Always use `bun` instead of `npm` or `yarn` for package management
+- Use `bun install` for installing dependencies
+- Use `bun run <script>` for running package.json scripts
+- Use `bun <file>` for running JavaScript/TypeScript files directly
+
+## Runtime
+- Use `bun` as the JavaScript runtime instead of `node`
+- For running files directly: `bun run <file>`
+- For REPL/evaluation: `bun -e "<code>"`
+
+## Examples
+- Install packages: `bun install <package>`
+- Run development server: `bun run dev`
+- Execute script: `bun run-local.js`
+- Run tests: `bun test`

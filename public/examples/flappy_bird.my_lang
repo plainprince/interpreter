@@ -1,0 +1,117 @@
+# Flappy Bird Clone
+# Click the mouse to make the bird "flap" upwards.
+
+# Game constants
+GRAVITY = 0.1
+FLAP_STRENGTH = -1
+PIPE_SPEED = -1.5
+PIPE_GAP = 30
+PIPE_WIDTH = 20
+
+# Game state
+bird = { x: 30, y: 30, vy: 0 }
+pipes = []
+score = 0
+game_over = false
+frames = 0 # Used to control pipe spawning
+
+# This function is called when the mouse is clicked
+function onMouseDown(event);
+    if (not game_over);
+        bird.vy = FLAP_STRENGTH
+    else;
+        # Restart the game on click after game over
+        bird = { x: 30, y: 30, vy: 0 }
+        pipes = []
+        score = 0
+        game_over = false
+        frames = 0
+        console.clear()
+        console.log("Flappy Bird! Click to flap.")
+    end;
+end;
+
+# Function to spawn a new pair of pipes
+function spawn_pipe();
+    gap_y = PIPE_GAP / 2 + math.random() * (64 - PIPE_GAP) # 64 is default canvas height
+    pipes.push({ x: 128, y: gap_y }) # 128 is default canvas width
+end;
+
+console.log("Flappy Bird! Click to flap.")
+
+# --- Main Game Loop ---
+while (true);
+    # --- UPDATE LOGIC ---
+    if (not game_over);
+        # Bird physics
+        bird.vy += GRAVITY
+        bird.y += bird.vy
+
+        # Pipe spawning
+        if (frames % 80 == 0); # Spawn a pipe every 80 frames
+            spawn_pipe()
+        end;
+        frames += 1
+
+        # Move pipes and check for score
+        for (i, pipes.length);
+            pipe = pipes[i]
+            pipe.x += PIPE_SPEED
+            
+            # If bird passes a pipe, score a point
+            if (pipe.x + PIPE_WIDTH < bird.x and not pipe.scored);
+                score += 1
+                pipe.scored = true
+                console.log("Score:", score)
+            end;
+        end;
+        
+        # Remove off-screen pipes
+        if (pipes.length > 0 and pipes[0].x < -PIPE_WIDTH);
+            pipes.shift()
+        end;
+
+        # Collision detection
+        # Ground collision
+        if (bird.y > 64 - GROUND_HEIGHT);
+            game_over = true
+        end;
+
+        # Pipe collision
+        for (i, pipes.length);
+            p = pipes[i]
+            # Check if bird is within the x-range of the pipe
+            if (bird.x > p.x and bird.x < p.x + PIPE_WIDTH);
+                # Check if bird is inside the gap
+                if (bird.y < p.y - PIPE_GAP / 2 or bird.y > p.y + PIPE_GAP / 2);
+                    game_over = true
+                end;
+            end;
+        end;
+        
+        if (game_over);
+            console.error("Game Over! Final Score:", score)
+            console.log("Click to restart.")
+        end;
+    end;
+    
+    # --- DRAWING ---
+    clear(135, 206, 235) # Sky blue
+
+    # Draw pipes
+    for (i, pipes.length);
+        p = pipes[i]
+        # Top pipe
+        rect(p.x, 0, PIPE_WIDTH, p.y - PIPE_GAP / 2, 0, 200, 0)
+        # Bottom pipe
+        rect(p.x, p.y + PIPE_GAP / 2, PIPE_WIDTH, 64 - (p.y + PIPE_GAP / 2), 0, 200, 0)
+    end;
+    
+    # Draw bird using a sprite
+    # The rotation gives it a diving/climbing effect
+    rotation = math.min(math.max(bird.vy * 10, -30), 90)
+    sprite(bird.x, bird.y, "bean", {rotation: rotation, scale: 0.3})
+    
+    # Target ~60 FPS
+    wait(16)
+end;

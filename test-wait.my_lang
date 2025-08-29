@@ -1,0 +1,10 @@
+console.log("Starting wait test...")
+start_time = time()
+console.log("Time before wait:", start_time)
+
+wait(2000)
+
+end_time = time()
+console.log("Time after wait:", end_time)
+console.log("Elapsed time:", end_time - start_time, "(should be ~2000ms)")
+console.log("Wait test complete!")
