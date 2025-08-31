@@ -58,12 +58,17 @@ self.onmessage = async function (e) {
       };
       
       // Include resource limits in settings
+      const defaultLimits = {
+        maxCommands: Infinity,
+        maxMemoryMB: 100,
+        maxCpuTimeMs: 60000
+      };
+      
       const settings = {
         ...(msg.settings || {}),
-        limits: msg.limits || {
-          maxCommands: Infinity,
-          maxMemoryMB: 100,
-          maxCpuTimeMs: 10000
+        limits: {
+          ...defaultLimits,
+          ...(msg.limits || {})
         }
       };
       

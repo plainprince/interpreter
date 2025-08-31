@@ -130,10 +130,11 @@ function processGuestQueue() {
 // --- Main Socket Logic ---
 io.on('connection', (socket) => {
     const userId = socket.request.session?.userId;
-    console.log(`[${new Date().toISOString()}] User connected: ${socket.id}${userId ? ` (User ID: ${userId})` : ' (Guest)'}`);
+    console.log(`[${new Date().toISOString()}] User connected: ${socket.id}${userId ? ` (User ID: ${userId})` : ' (Guest)'}. Session: ${JSON.stringify(socket.request.session)}`);
     
     socket.on('interpret', ({ code, settings }) => {
         const isLoggedIn = !!socket.request.session?.userId;
+        console.log(`[${new Date().toISOString()}] Interpret request from ${socket.id}. Session userId: ${socket.request.session?.userId}, isLoggedIn: ${isLoggedIn}`);
 
         if (isLoggedIn) {
             runInterpreter(socket, code, settings, isLoggedIn);
@@ -148,9 +149,9 @@ io.on('connection', (socket) => {
 
 function runInterpreter(socket, code, settings, isLoggedIn, onCompleteCallback = () => {}) {
     const userId = socket.request.session?.userId;
-    const timeoutDuration = 60000; // 60 seconds for everyone
+    const timeoutDuration = isLoggedIn ? 60000 : 10000;
 
-    console.log(`[${new Date().toISOString()}] Starting interpreter for ${socket.id}${userId ? ` (User ID: ${userId})` : ' (Guest)'}. Timeout: ${timeoutDuration / 1000}s.`);
+    console.log(`[${new Date().toISOString()}] Starting interpreter for ${socket.id}${userId ? ` (User ID: ${userId})` : ' (Guest)'}. Timeout: ${timeoutDuration / 1000}s. Logged in: ${isLoggedIn}`);
     
     let worker;
     let timeout;

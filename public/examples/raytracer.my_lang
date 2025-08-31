@@ -5,8 +5,8 @@
 console.log("Simple Raytracer - WASD to move, mouse drag to look")
 
 # --- Camera Settings ---
-WIDTH = 64
-HEIGHT = 32
+WIDTH = 128
+HEIGHT = 64
 cam_x = 0
 cam_y = 1
 cam_z = 5
@@ -200,8 +200,8 @@ function onMouseMove(event);
         dx = event.x - last_mouse_x
         dy = event.y - last_mouse_y
         
-        cam_yaw = cam_yaw - dx * 0.3
-        cam_pitch = cam_pitch - dy * 0.3
+        cam_yaw = cam_yaw + dx * 0.3  # Inverted horizontal look controls
+        cam_pitch = cam_pitch + dy * 0.3  # Flip dy to match screen coordinates
         cam_pitch = math.max(-89, math.min(89, cam_pitch))
         
         last_mouse_x = event.x
@@ -257,7 +257,7 @@ while (true);
             for (x, WIDTH);
                 # Calculate ray direction for this pixel
                 u = (x - WIDTH/2) / WIDTH
-                v = (y - HEIGHT/2) / HEIGHT
+                v = -(y - HEIGHT/2) / HEIGHT  # Flip v to fix upside-down rendering
                 
                 # Ray direction
                 dir_x = forward_x + right_x * u + up_x * v

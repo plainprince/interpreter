@@ -341,6 +341,12 @@ class SocketManager {
     }
     this.connected = false;
   }
+
+  reconnect() {
+    console.log('Reconnecting Socket.IO to sync session...');
+    this.disconnect();
+    this.connect();
+  }
 }
 
 // ========== SPRITE MANAGEMENT ==========
@@ -618,6 +624,27 @@ class PlaygroundApp {
     if (mainRunBtn) {
       mainRunBtn.addEventListener("click", () => this.runCode());
     }
+
+    // Upload button
+    const uploadBtn = $("#upload");
+    const fileInput = $("#file-input");
+    if (uploadBtn && fileInput) {
+      uploadBtn.addEventListener("click", () => {
+        fileInput.click();
+      });
+      
+      fileInput.addEventListener("change", (e) => {
+        this.handleFileUpload(e);
+      });
+    }
+
+    // Download button
+    const downloadBtn = $("#download");
+    if (downloadBtn) {
+      downloadBtn.addEventListener("click", () => {
+        this.handleFileDownload();
+      });
+    }
   }
 
   showOutputModal() {
@@ -798,6 +825,9 @@ class PlaygroundApp {
         this.updateAuthButton();
         this.closeAuthModal();
         this.showAuthSuccess("Login successful!");
+        
+        // Reconnect Socket.IO to sync the new session
+        this.socketManager.reconnect();
       } else {
         this.showAuthError(data.message || "Login failed");
       }
@@ -843,6 +873,9 @@ class PlaygroundApp {
         this.updateAuthButton();
         this.closeAuthModal();
         this.showAuthSuccess("Registration successful!");
+        
+        // Reconnect Socket.IO to sync the new session
+        this.socketManager.reconnect();
       } else {
         this.showAuthError(data.message || "Registration failed");
       }
@@ -861,6 +894,9 @@ class PlaygroundApp {
         this.userId = null;
         this.updateAuthButton();
         this.showAuthSuccess("Logged out successfully!");
+        
+        // Reconnect Socket.IO to clear the session
+        this.socketManager.reconnect();
       }
     } catch (error) {
       console.error('Logout error:', error);
@@ -926,10 +962,20 @@ class PlaygroundApp {
       });
     });
 
-    // Close modal when clicking outside
+    // Close modal when clicking outside - with drag detection
     $all(".modal").forEach(modal => {
-      modal.addEventListener("click", (e) => {
-        if (e.target === modal) {
+      let isMouseDown = false;
+      let mouseDownTarget = null;
+
+      modal.addEventListener("mousedown", (e) => {
+        isMouseDown = true;
+        mouseDownTarget = e.target;
+      });
+
+      modal.addEventListener("mouseup", (e) => {
+        // Only close if mousedown and mouseup were on the same target (the modal)
+        // and that target is the modal itself (not a child element)
+        if (isMouseDown && mouseDownTarget === modal && e.target === modal) {
           if (modal.id === "output-modal") {
             this.hideOutputModal();
           } else {
@@ -937,6 +983,14 @@ class PlaygroundApp {
             modal.style.display = "none";
           }
         }
+        isMouseDown = false;
+        mouseDownTarget = null;
+      });
+
+      // Reset drag state if mouse leaves the modal
+      modal.addEventListener("mouseleave", () => {
+        isMouseDown = false;
+        mouseDownTarget = null;
       });
     });
 
@@ -1136,12 +1190,8 @@ class PlaygroundApp {
     this.worker.postMessage({
       type: 'run',
       code: this.editorValue,
-      settings: this.getSettings(),
-      limits: {
-        maxCommands: Infinity, // No command limit for web UI
-        maxMemoryMB: 50,
-        maxCpuTimeMs: 10000
-      }
+      settings: this.getSettings()
+      // Removed limits - let the server decide resource limits based on user authentication
     });
   }
 
@@ -1319,6 +1369,60 @@ class PlaygroundApp {
       }
       
       alert("Playground has been reset to default.");
+  }
+
+  handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.my_lang')) {
+      alert('Please select a .my_lang file');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result;
+      this.editorValue = content;
+      localStorage.setItem("interpreter_code", content);
+      console.log(`Loaded file: ${file.name}`);
+    };
+    reader.onerror = () => {
+      alert('Error reading file');
+    };
+    reader.readAsText(file);
+
+    // Reset the file input so the same file can be uploaded again
+    event.target.value = '';
+  }
+
+  handleFileDownload() {
+    const code = this.editorValue;
+    if (!code.trim()) {
+      alert('No code to download');
+      return;
+    }
+
+    // Create a filename with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `code_${timestamp}.my_lang`;
+
+    // Create blob and download
+    const blob = new Blob([code], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    // Clean up the URL object
+    URL.revokeObjectURL(url);
+    
+    console.log(`Downloaded file: ${filename}`);
   }
 }
 
