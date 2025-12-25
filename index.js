@@ -35,6 +35,9 @@ io.use((socket, next) => {
 
 // --- API Routes ---
 app.post('/api/register', async (req, res) => {
+    if (!req.body || typeof req.body !== 'object') {
+        return res.status(400).json({ message: 'Invalid request body.' });
+    }
     const { username, password } = req.body;
     if (!username || !password) {
         return res.status(400).json({ message: 'Username and password are required.' });
@@ -65,7 +68,13 @@ app.post('/api/register', async (req, res) => {
 });
 
 app.post('/api/login', async (req, res) => {
+    if (!req.body || typeof req.body !== 'object') {
+        return res.status(400).json({ message: 'Invalid request body.' });
+    }
     const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ message: 'Username and password are required.' });
+    }
     const stmt = db.prepare('SELECT * FROM users WHERE username = ?');
     const user = await stmt.get(username);
 
